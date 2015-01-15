@@ -188,6 +188,7 @@
         var element = this.element;
         var injectables = this.injectables;
         var basePathResolver = this.basePathResolver;
+        var tries = 0;
 
         if (this.remoteInjectableConfigs.length > 0) {
             $q.all(this.executeRemoteCalls())
@@ -202,7 +203,6 @@
                         var resolverFunction = urlDef.resolve || basePathResolver;
                         return resolverFunction.call(null, urlDef.url, injectables);
                     }
-
                     addStylesheets(stylesheets.map(getBasePath));
                     addScripts.bind(element)(scripts.map(getBasePath));
 
@@ -228,10 +228,14 @@
                 });
                 angular.resumeBootstrap([self.appName + '.injectables']);
             } catch (e) {
-                if (window.console && window.console.info) {
-                    window.console.info('Waiting for scripts to be loaded! Re-attempting bootstrap in 10 miliseconds');
+                if (tries < 5) {
+
+                    if (window.console && window.console.info) {
+                        window.console.info('Waiting for scripts to be loaded! Re-attempting bootstrap in 10 miliseconds');
+                    }
+                    tries = tries + 1;
+                    window.setTimeout(resumeBootstrapWhenLoaded.bind(this), 10);
                 }
-                window.setTimeout(resumeBootstrapWhenLoaded.bind(this), 10);
             }
         }
 

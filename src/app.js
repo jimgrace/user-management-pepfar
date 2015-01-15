@@ -154,7 +154,7 @@ window.getBootstrapper('PEPFAR.usermanagement', document)
     .execute(function (injectables) {
         window.dhis2 = window.dhis2 || {};
         window.dhis2.settings = window.dhis2.settings || {};
-        window.dhis2.settings.baseUrl = injectables.webappManifest.activities.dhis.href.replace(window.location.origin, '').replace(/^\//, '');
+        window.dhis2.settings.baseUrl = window.location.origin + injectables.webappManifest.activities.dhis.href.replace(/^\*/, '').replace(/^\//, '');
     })
     .loadStylesheet('/dhis-web-commons/css/menu.css')
     .loadScript('/dhis-web-commons/javascripts/dhis2/dhis2.translate.js')
