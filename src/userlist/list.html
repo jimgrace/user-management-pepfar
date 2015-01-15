@@ -92,7 +92,7 @@
         </div>
         <div class="col-sm-6">
             <div class="button-group">
-                <a ng-show="userList.search.fileCreated && userList.users.length > 0" download="{{userList.search.fileDownload.download}}" ng-model='userList.search.fileDownload' ng-href='{{userList.search.fileDownload.url}}' class="btn btn-default pull-right">
+                <a ng-show="userList.users.length > 0" download="{{userList.search.fileDownload.download}}" ng-model='userList.search.fileDownload' ng-href='{{userList.search.fileDownload.url}}' class="btn btn-default pull-right" ng-class="{disabled: !userList.search.fileCreated}">
                     <i class="fa fa-save"></i>
                     <span translate class="ng-scope">Download as CSV</span>
                 </a>

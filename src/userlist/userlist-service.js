@@ -6,6 +6,7 @@ function userListService(Restangular, paginationService, errorHandler) {
 
     return {
         getList: getList,
+        getFullList: getFullList,
         pagination: paginationService,
         setFilter: setFilter,
         getFilters: getFilters,
@@ -16,10 +17,17 @@ function userListService(Restangular, paginationService, errorHandler) {
 
     function getList() {
         return Restangular.one('users')
-            .get(getRequestParams())
+            .get(getRequestParams(true))
             .then(setPagination)
             .then(extractUsers)
             .catch(errorHandler.errorFn('Unable to get the list of users from the server'));
+    }
+
+    function getFullList() {
+        return Restangular.one('users')
+            .get(getRequestParams())
+            .then(extractUsers)
+            .catch(errorHandler.errorFn('Unable to get the full list of users from the server'));
     }
 
     function setPagination(response) {
@@ -33,15 +41,26 @@ function userListService(Restangular, paginationService, errorHandler) {
         return response.users || [];
     }
 
-    function getRequestParams() {
-        cleanFilters();
-        return {
+    function getRequestParams(hasPaging) {
+        var needsPaging = hasPaging || false;
+        var params = {
             fields: fields.join(','),
-            page: paginationService.getCurrentPage(),
-            pageSize: paginationService.getPageSize(),
-            filter: filters,
+            filter: undefined,
             manage: 'true'
         };
+
+        if (needsPaging) {
+            params.page = paginationService.getCurrentPage();
+            params.pageSize = paginationService.getPageSize();
+        } else {
+            params.paging = false;
+        }
+
+        cleanFilters();
+
+        params.filter = filters;
+
+        return params;
     }
 
     function getFilters() {

@@ -1,20 +1,12 @@
 angular.module('PEPFAR.usermanagement').controller('userListController', userListController);
 
 function userListController(userFilter, currentUser, userTypesService, dataGroupsService, userListService,  //jshint ignore:line
-                            userStatusService, $state, errorHandler, userActions, _) {
+                            userStatusService, $state, $scope, errorHandler, userActions) {
     var vm = this;
-    var searchFieldNames = {
-        name: 'name',
-        username: 'userCredentials.username',
-        'e-mail': 'email',
-        roles: 'userCredentials.userRoles.name',
-        'user groups': 'userGroups.name',
-        'organisation unit': 'organisationUnits.name',
-        types: 'userGroups.name'
-    };
 
     vm.detailsOpen = false;
     vm.users = [];
+    vm.allUsers = [];
     vm.pagination = userListService.pagination;
     vm.processing = {};
     vm.listIsLoading = false;
@@ -39,7 +31,6 @@ function userListController(userFilter, currentUser, userTypesService, dataGroup
     vm.removeFilter = removeFilter;
     vm.addFilter = addFilter;
     vm.resetFilters = resetFilters;
-    vm.canEditUser = canEditUser;
 
     vm.search = {
         options: userFilter,
@@ -51,6 +42,7 @@ function userListController(userFilter, currentUser, userTypesService, dataGroup
             url: '',
             download: ''
         },
+        getFilters: getFilters,
         activeFilters: [],
         addFilter: addFilter,
         placeHolderText: [],
@@ -67,6 +59,7 @@ function userListController(userFilter, currentUser, userTypesService, dataGroup
         }
         reloadFilters();
         loadList();
+        loadFullUserList();
     }
 
     function hasSecondaryFilter(filterIndex) {
@@ -84,6 +77,10 @@ function userListController(userFilter, currentUser, userTypesService, dataGroup
         vm.users = users;
     }
 
+    function setFullUserList(users) {
+        vm.allUsers = users;
+    }
+
     function pageChanged() {
         vm.pagination.setCurrentPage(vm.currentPage);
         loadList();
@@ -93,7 +90,7 @@ function userListController(userFilter, currentUser, userTypesService, dataGroup
         vm.listIsLoading = true;
         userListService.getList()
             .then(setUserList)
-            .then(buildCSV)
+            //.then(buildCSV)
             .catch(function () {
                 vm.listIsLoading = false;
             });
@@ -196,12 +193,22 @@ function userListController(userFilter, currentUser, userTypesService, dataGroup
             outputStr = phText;
         }
 
+        window.console.log(vm.search.placeHolderText[$index]);
         vm.search.placeHolderText[$index] = outputStr + newVal.name;
+
     }
 
     //TODO: Move the search stuff to the filter service
     function doSearch() {
-        var fieldNames = searchFieldNames;
+        var fieldNames = {
+            name: 'name',
+            username: 'userCredentials.username',
+            'e-mail': 'email',
+            roles: 'userCredentials.userRoles.name',
+            'user groups': 'userGroups.name',
+            'organisation unit': 'organisationUnits.name',
+            types: 'userGroups.name'
+        };
         resetFileDownload();
 
         userListService.resetFilters();
@@ -222,6 +229,7 @@ function userListController(userFilter, currentUser, userTypesService, dataGroup
         });
 
         loadList();
+        loadFullUserList();
     }
 
     function isValidFilter(filterDefinition) {
@@ -250,12 +258,8 @@ function userListController(userFilter, currentUser, userTypesService, dataGroup
     }
 
     function reloadFilters() {
-        var fieldNames = _.invert(searchFieldNames);
-
-        if (userListService.getFilters().length > 0) {
-            userListService.getFilters().forEach(function (item) {
-                var splitFilter = item.split(':');
-
+        if (vm.search.filters && vm.search.filters.length > 0) {
+            vm.search.filters.forEach(function (item) {
                 var temp = {
                     id: new Date().toString(),
                     type: undefined,
@@ -263,26 +267,12 @@ function userListController(userFilter, currentUser, userTypesService, dataGroup
                     comparator: 'like'
                 };
 
-                temp.type = userFilter.reduce(function (current, filter) {
-                    if (filter.name.toLowerCase() === fieldNames[splitFilter[0]]) {
-                        errorHandler.debug(splitFilter[0]);
-                        errorHandler.debug(fieldNames[splitFilter[0]]);
-                        errorHandler.debug(filter.name.toLowerCase());
-
-                        current = filter;
-                    }
-                    return current;
-                }, undefined);
-
-                temp.value = splitFilter[2];
-
-                if (isValidFilter(temp)) {
-                    errorHandler.debug('Restoring filter', temp);
-                    vm.search.activeFilters.push(temp);
-                }
+                temp.type = item.type || 'Name';
+                temp.value = item.value;
+                vm.search.activeFilters.push(temp);
             });
         } else {
-            addNameFilter();
+            addFilter();
         }
     }
 
@@ -290,13 +280,7 @@ function userListController(userFilter, currentUser, userTypesService, dataGroup
         vm.search.activeFilters = [];
         userListService.resetFilters();
         doSearch();
-
-        addNameFilter();
-    }
-
-    function addNameFilter() {
         addFilter();
-        vm.search.activeFilters[0].type = {name: 'Name'};
     }
 
     function editUser(user) {
@@ -305,11 +289,8 @@ function userListController(userFilter, currentUser, userTypesService, dataGroup
         }
     }
 
-    function canEditUser(userId) {
-        if (!userId || userId === currentUser.id) {
-            return false;
-        }
-        return true;
+    function getFilters() {
+        vm.search.filters = userListService.getFilters();
     }
 
     //TODO: Refactor to factory if CSV functionality is needed elsewhere
@@ -321,9 +302,19 @@ function userListController(userFilter, currentUser, userTypesService, dataGroup
         vm.search.fileCreated = false;
     }
 
+    function loadFullUserList() {
+        vm.search.fileCreated = true;
+        userListService.getFullList()
+            .then(setFullUserList)
+            .then(buildCSV)
+            .catch(function () {
+                vm.listIsLoading = false;
+            });
+    }
+
     function buildCSV() {
         var header = 'Name, Email, Access Level, Groups\r\n';
-        var localUsers = vm.users;
+        var localUsers = vm.allUsers;
         var finalCSV = [];
 
         if (!vm.checkDownload()) {
@@ -374,6 +365,8 @@ function userListController(userFilter, currentUser, userTypesService, dataGroup
         fileName.push(currentUser.name);
         fileName.push('Page');
         fileName.push(vm.currentPage);
+
+        //window.console.log(res.substring(0, 16));
 
         return fileName.join('-') + '.csv';
     }
